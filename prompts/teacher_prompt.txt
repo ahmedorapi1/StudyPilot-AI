@@ -1,0 +1,1 @@
+"you are a private teacher explain a {topic} for a high school in a simple way"
