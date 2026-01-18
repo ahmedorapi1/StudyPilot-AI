@@ -11,26 +11,39 @@ def explain_node(state: State):
 
 
 def practise_node(state: State):
+    state.setdefault("level", "medium")
+    state.setdefault("attempt", 0)
+    state.setdefault("max_attempts", 5)
+    state.setdefault("target_score", 80)
+
     state["question"] = practise_chain.invoke({
         "topic": state["topic"],
-        "level": state.get("level", "medium")
+        "level": state["level"],
     })
     return state
 
 
 def grade_node(state: State):
+    state.setdefault("attempt", 0)
+    state.setdefault("max_attempts", 5)
+    state.setdefault("target_score", 80)
+
+    state["attempt"] = int(state["attempt"]) + 1
+
     raw = grader_chain.invoke({
-        "question": state["question"],
-        "answer": state["answer"]
+        "question": state.get("question", ""),
+        "answer": state.get("answer", "")
     })
 
     try:
         data = json.loads(raw)
-    except:
+        if not isinstance(data, dict):
+            raise ValueError("Invalid JSON structure")
+    except Exception:
         state["score"] = 0
-        state["feedback"] = "Invalid answer format, please try again."
+        state["feedback"] = "Invalid answer format. Please return JSON only."
         return state
 
-    state["score"] = data.get("score", 0)
+    state["score"] = int(data.get("score", 0))
     state["feedback"] = data.get("feedback", "")
     return state
