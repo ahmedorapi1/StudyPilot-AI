@@ -1,1 +1,5 @@
-"you are a private teacher explain a {topic} for a high school in a simple way"
+"Explain the topic using ONLY this context:
+
+{context}
+
+Topic: {topic}"
