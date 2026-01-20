@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, END
 from graph.state import State
-from graph.nodes import explain_node, practise_node, grade_node
+from graph.nodes import explain_node, practice_node, grade_node
 
 
 def route_after_grade(state: State):
@@ -15,19 +15,19 @@ def route_after_grade(state: State):
     if score < 50:
         return "explain"
 
-    return "practise"
+    return "practice"
 
 
 def build_graph():
     graph = StateGraph(State)
 
     graph.add_node("explain", explain_node)
-    graph.add_node("practise", practise_node)
+    graph.add_node("practice", practice_node)
     graph.add_node("grade", grade_node)
 
     graph.set_entry_point("explain")
-    graph.add_edge("explain", "practise")
-    graph.add_edge("practise", "grade")
+    graph.add_edge("explain", "practice")
+    graph.add_edge("practice", "grade")
 
     # Feedback loop
     graph.add_conditional_edges(
@@ -35,7 +35,7 @@ def build_graph():
         route_after_grade,
         {
             "explain": "explain",
-            "practise": "practise",
+            "practice": "practice",
             END: END
         }
     )

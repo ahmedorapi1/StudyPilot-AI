@@ -1,50 +1,43 @@
 import json
 from graph.state import State
 from chains.teacher_chain import run_teacher
-from chains.practise_chain import run_practise
+from chains.practice_chain import run_practice
 from chains.grader_chain import run_grader
 
 
 def explain_node(state: State):
-    state["explanation"] = run_teacher({"topic": state["topic"]})
+    state["explanation"] = run_teacher(state["topic"])
     return state
 
 
-def practise_node(state: State):
+def practice_node(state: State):
     state.setdefault("level", "medium")
     state.setdefault("attempt", 0)
     state.setdefault("max_attempts", 5)
     state.setdefault("target_score", 80)
 
-    state["question"] = run_practise({
-        "topic": state["topic"],
-        "level": state["level"],
-    })
+    state["question"] = run_practice(
+        topic=state["topic"],
+        level=state["level"]
+    )
     return state
 
 
-def grade_node(state: State):
-    state.setdefault("attempt", 0)
-    state.setdefault("max_attempts", 5)
-    state.setdefault("target_score", 80)
+def grade_node(state: State) -> State:
+    state["attempt"] = state.get("attempt", 0) + 1
 
-    state["attempt"] = int(state["attempt"]) + 1
-
-    raw = run_grader({
-        "topic": state.get("topic",""),
-        "question": state.get("question", ""),
-        "answer": state.get("answer", "")
-    })
+    raw = run_grader(
+        topic=state["topic"],
+        question=state.get("question", ""),
+        answer=state.get("answer", "")
+    )
 
     try:
         data = json.loads(raw)
-        if not isinstance(data, dict):
-            raise ValueError("Invalid JSON structure")
+        state["score"] = int(data.get("score", 0))
+        state["feedback"] = data.get("feedback", "")
     except Exception:
         state["score"] = 0
-        state["feedback"] = "Invalid answer format. Please return JSON only."
-        return state
+        state["feedback"] = "Invalid grading response."
 
-    state["score"] = int(data.get("score", 0))
-    state["feedback"] = data.get("feedback", "")
     return state

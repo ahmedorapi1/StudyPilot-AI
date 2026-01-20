@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyPilot AI</title>
+
+  <style>
+    body{
+      font-family: Arial, Helvetica, sans-serif;
+      background:#f4f6f8;
+      padding:40px;
+      color:#111;
+    }
+    .container{
+      max-width: 820px;
+      margin: 0 auto;
+    }
+    h1{
+      font-size: 44px;
+      margin: 0 0 20px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .row{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom: 18px;
+    }
+    input, select, button{
+      padding: 12px 14px;
+      font-size: 16px;
+      border: 1px solid #c9ced6;
+      border-radius: 8px;
+      outline: none;
+      background: #fff;
+    }
+    input{
+      flex: 1;
+    }
+    button{
+      cursor:pointer;
+      background:#111;
+      color:#fff;
+      border: 1px solid #111;
+      min-width: 140px;
+    }
+    button:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+    }
+    .card{
+      background:#fff;
+      border:1px solid #e3e7ee;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 0;
+      box-shadow: 0 1px 0 rgba(0,0,0,.03);
+    }
+    .title{
+      font-size: 26px;
+      margin: 22px 0 10px;
+      font-weight: 800;
+    }
+    pre{
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .muted{
+      color:#6b7280;
+      font-size: 13px;
+    }
+    .error{
+      color:#b91c1c;
+      background:#fee2e2;
+      border:1px solid #fecaca;
+      padding:10px 12px;
+      border-radius:10px;
+      margin-top:10px;
+      display:none;
+    }
+    .success{
+      color:#065f46;
+      background:#d1fae5;
+      border:1px solid #a7f3d0;
+      padding:10px 12px;
+      border-radius:10px;
+      margin-top:10px;
+      display:none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>StudyPilot AI <span>🚀</span></h1>
+
+    <!-- Topic + Level + Learn -->
+    <div class="row">
+      <input id="topic" placeholder='Enter topic (e.g. "square root")' />
+      <select id="level">
+        <option value="easy">easy</option>
+        <option value="medium" selected>medium</option>
+        <option value="hard">hard</option>
+      </select>
+      <button id="learnBtn" onclick="learn()">Learn</button>
+    </div>
+
+    <div class="muted">
+      Tip: أول مرة اضغط Learn هيعمل شرح + سؤال. بعد ما تكتب إجابتك اضغط Learn تاني للتصحيح.
+    </div>
+
+    <div id="errBox" class="error"></div>
+    <div id="okBox" class="success"></div>
+
+    <!-- Explanation -->
+    <div class="title">Explanation</div>
+    <div class="card">
+      <pre id="explanation">—</pre>
+    </div>
+
+    <!-- Question -->
+    <div class="title">Question</div>
+    <div class="card">
+      <pre id="question">—</pre>
+    </div>
+
+    <!-- Answer -->
+    <div class="row">
+      <input id="answer" placeholder="Your answer" />
+      <button id="submitBtn" onclick="learn()">Submit</button>
+    </div>
+
+    <!-- Result -->
+    <div class="title">Result</div>
+    <div class="card">
+      <pre id="result">—</pre>
+    </div>
+  </div>
+
+  <script>
+    function showError(msg){
+      const box = document.getElementById("errBox");
+      box.style.display = "block";
+      box.textContent = msg;
+
+      const ok = document.getElementById("okBox");
+      ok.style.display = "none";
+      ok.textContent = "";
+    }
+
+    function showOk(msg){
+      const ok = document.getElementById("okBox");
+      ok.style.display = "block";
+      ok.textContent = msg;
+
+      const box = document.getElementById("errBox");
+      box.style.display = "none";
+      box.textContent = "";
+    }
+
+    function setLoading(isLoading){
+      const learnBtn = document.getElementById("learnBtn");
+      const submitBtn = document.getElementById("submitBtn");
+      learnBtn.disabled = isLoading;
+      submitBtn.disabled = isLoading;
+      learnBtn.textContent = isLoading ? "Loading..." : "Learn";
+      submitBtn.textContent = isLoading ? "Loading..." : "Submit";
+    }
+
+    async function learn(){
+      const topic = document.getElementById("topic").value.trim();
+      const level = document.getElementById("level").value;
+      const answer = document.getElementById("answer").value.trim();
+
+      if(!topic){
+        showError("Topic is required.");
+        return;
+      }
+
+      setLoading(true);
+
+      try{
+        const res = await fetch("/learn", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            topic,
+            level,
+            answer
+          })
+        });
+
+        // لو السيرفر رجّع خطأ
+        if(!res.ok){
+          const txt = await res.text();
+          throw new Error(txt || ("HTTP Error: " + res.status));
+        }
+
+        const data = await res.json();
+
+        // عرض البيانات لو موجودة
+        if (data.explanation !== undefined && data.explanation !== null && data.explanation !== "") {
+          // لو explanation object لأي سبب، حوله لسترنج
+          document.getElementById("explanation").innerText =
+            (typeof data.explanation === "object")
+              ? JSON.stringify(data.explanation, null, 2)
+              : data.explanation;
+        }
+
+        if (data.question !== undefined && data.question !== null && data.question !== "") {
+          document.getElementById("question").innerText =
+            (typeof data.question === "object")
+              ? JSON.stringify(data.question, null, 2)
+              : data.question;
+        }
+
+        // النتيجة
+        const hasScore = (data.score !== undefined && data.score !== null);
+        if (hasScore) {
+          const fb = data.feedback ?? "";
+          const att = (data.attempt !== undefined) ? `\nAttempt: ${data.attempt}` : "";
+          document.getElementById("result").innerText = `Score: ${data.score}\nFeedback: ${fb}${att}`;
+          showOk("Grading done ✅");
+        } else {
+          // لو لسه مرحلة شرح/سؤال بدون تصحيح
+          showOk("Step completed ✅");
+        }
+
+      } catch(e){
+        showError(e.message || "Something went wrong.");
+      } finally{
+        setLoading(false);
+      }
+    }
+  </script>
+</body>
+</html>
