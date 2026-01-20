@@ -1,7 +1,7 @@
 from langchain_core.prompts import PromptTemplate
 from core.llm import get_llm
 from core import project_path as pth
-from rag.retriever import retrive_theory
+from RAG. retriver import retrive_theory
 
 
 llm = get_llm()

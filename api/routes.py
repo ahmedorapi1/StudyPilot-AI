@@ -1,45 +1,56 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from graph.flow import build_graph
+import json
+from api.schemas import (
+    StudyRequest,
+    PracticeRequest,
+    GradeRequest,
+    StudyResponse,
+    GradeResponse,
+    PracticeResponse
+)
+from chains.teacher_chain import run_teacher
+from chains.practice_chain import run_practice
+from chains.grader_chain import run_grader
+
 
 router = APIRouter()
-engine = build_graph()
 
 
-class Request(BaseModel):
-    student_id: str
-    topic: str
-    answer: str | None = None
-    level: str = "medium"
-    max_attempts: int = 5
-    target_score: int = 80
+@router.get("/health")
+def health_check():
+    return {"status": "StudyPilot AI is running"}
 
 
-class Response(BaseModel):
-    student_id: str
-    topic: str
-    level: str
-    attempt: int
-    score: int | None = None
-    feedback: str | None = None
-    explanation: str | None = None
-    question: str | None = None
+@router.post("/study", response_model=StudyResponse)
+def study(req: StudyRequest):
+
+    if not req.topic:
+        raise HTTPException(status_code=400, detail="Topic is required")
+
+    explanation = run_teacher(req.topic)
+
+    return {
+        "explanation": explanation,
+    }
 
 
-@router.post("/study", response_model=Response)
-def study(request: Request):
-    try:
-        state = engine.invoke(request.model_dump())
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.post("/practice", response_model=PracticeResponse)
+def practice(req: PracticeRequest):
 
-    return Response(**{
-        "student_id": state.get("student_id"),
-        "topic": state.get("topic"),
-        "level": state.get("level", "medium"),
-        "attempt": state.get("attempt", 0),
-        "score": state.get("score"),
-        "feedback": state.get("feedback"),
-        "explanation": state.get("explanation"),
-        "question": state.get("question"),
-    })
+    if not req.topic:
+        raise HTTPException(status_code=400, detail="topic is required")
+
+    if not req.level:
+        questions = run_practice(req.topic)
+    else:
+        questions = run_practice(req.topic, req.level)
+    return {
+        "question": questions
+    }
+
+
+@router.post("/grading", response_model=GradeResponse)
+def grading(req: GradeRequest):
+    response = run_grader(req.topic, req.question, req.answer)
+    return json.loads(response)
+

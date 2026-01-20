@@ -1,6 +1,7 @@
 from langchain_core.prompts import PromptTemplate
 from core.llm import get_llm
 from core import project_path as pth
+from RAG.retriver import retrive_questions
 
 llm = get_llm()
 
